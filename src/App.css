@@ -184,3 +184,8 @@ a:active {
   height: 1px;
   overflow: hidden;
 }
+
+.hints {
+  height: 100px;
+  white-space: pre;
+}

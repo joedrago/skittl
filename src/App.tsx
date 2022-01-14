@@ -11,7 +11,7 @@ function About() {
   return (
     <div className="App-about">
       <p>
-        <i>hello wordl</i> is a remake of the word game{" "}
+        <i>skittl</i> is a remake of the word game{" "}
         <a href="https://www.powerlanguage.co.uk/wordle/">
           <i>Wordle</i>
         </a>{" "}
@@ -78,7 +78,7 @@ function App() {
   const [about, setAbout] = useState(false);
   return (
     <div className="App-container">
-      <h1>hello wordl</h1>
+      <h1>skittl</h1>
       <div style={{ position: "absolute", right: 5, top: 5 }}>
         <a href="#" onClick={() => setAbout((a) => !a)}>
           {about ? "Close" : "About"}

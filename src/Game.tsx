@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Row, RowState } from "./Row";
 import dictionary from "./dictionary.json";
-import { Clue, clue, describeClue } from "./clue";
+import { Clue, clue, describeClue, hasPreviousClues } from "./clue";
 import { Keyboard } from "./Keyboard";
 import targetList from "./targets.json";
 import { dictionarySet, pick, resetRng, seed, speak } from "./util";
@@ -26,7 +26,6 @@ function randomTarget(wordLength: number) {
 
 function Game(props: GameProps) {
   const [gameState, setGameState] = useState(GameState.Playing);
-  const [guesses, setGuesses] = useState<string[]>([]);
   const [currentGuess, setCurrentGuess] = useState<string>("");
   const [wordLength, setWordLength] = useState(5);
   const [hint, setHint] = useState<string>(`Make your first guess!`);
@@ -35,11 +34,21 @@ function Game(props: GameProps) {
     resetRng();
     return randomTarget(wordLength);
   });
+  let firstGuess = randomTarget(wordLength);
+  while(firstGuess === target) {
+    firstGuess = randomTarget(wordLength);
+  }
+  const [guesses, setGuesses] = useState<string[]>([firstGuess]);
   const [gameNumber, setGameNumber] = useState(1);
 
   const startNextGame = () => {
-    setTarget(randomTarget(wordLength));
-    setGuesses([]);
+    let target = randomTarget(wordLength);
+    let firstGuess = randomTarget(wordLength);
+    while(firstGuess === target) {
+      firstGuess = randomTarget(wordLength);
+    }
+    setTarget(target);
+    setGuesses([firstGuess]);
     setCurrentGuess("");
     setHint("");
     setGameState(GameState.Playing);
@@ -69,6 +78,13 @@ function Game(props: GameProps) {
       if (!dictionary.includes(currentGuess)) {
         setHint("Not a valid word");
         return;
+      }
+      if (guesses.length > 0) {
+        let hint = hasPreviousClues(guesses, currentGuess, target);
+        if(hint.length > 0) {
+          setHint(hint);
+          return;
+        }
       }
       setGuesses((guesses) => guesses.concat([currentGuess]));
       setCurrentGuess((guess) => "");
@@ -152,8 +168,13 @@ function Game(props: GameProps) {
             resetRng();
             setGameNumber(1);
             setGameState(GameState.Playing);
-            setGuesses([]);
-            setTarget(randomTarget(length));
+            let target = randomTarget(wordLength);
+            let firstGuess = randomTarget(wordLength);
+            while(firstGuess === target) {
+              firstGuess = randomTarget(wordLength);
+            }
+            setTarget(target);
+            setGuesses([firstGuess]);
             setWordLength(length);
             setHint(`${length} letters`);
           }}
@@ -175,7 +196,7 @@ function Game(props: GameProps) {
       <table className="Game-rows" tabIndex={0} aria-label="Table of guesses">
         <tbody>{tableRows}</tbody>
       </table>
-      <p role="alert">{hint || `\u00a0`}</p>
+      <p className="hints" role="alert">{hint || `\u00a0`}</p>
       {/* <p role="alert" className="Game-sr-feedback">
         {srStatus}
       </p> */}

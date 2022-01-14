@@ -55,3 +55,81 @@ export function describeClue(clue: CluedLetter[]): string {
     .map(({ letter, clue }) => letter.toUpperCase() + " " + clueWord(clue!))
     .join(", ");
 }
+
+function removeIfExists(arr : string[], c : string) : string[] {
+   for (var i = arr.length; i--;) {
+      if (arr[i] === c) {
+        arr.splice(i, 1);
+        return arr;
+      }
+   }
+   return arr;
+}
+
+export function hasPreviousClues(guesses: string[], currentGuess: string, target: string) : string
+{
+  const currentGuessClues = clue(currentGuess, target);
+  let hints : string[] = [];
+
+  let grays = new Map<string, boolean>();
+  for(let prevGuess of guesses) {
+    let prevGuessClues = clue(prevGuess, target);
+
+    // Collect grays
+    prevGuessClues.forEach((c, i) => {
+      if(c.clue == Clue.Absent) {
+        grays.set(c.letter.toUpperCase(), true);
+      }
+    });
+
+    // Check greens and unmoved yellows
+    let missingGreens : string[] = [];
+    let unmovedYellows : string[] = [];
+    for(let i = 0; i < currentGuessClues.length; ++i) {
+      if((prevGuessClues[i].clue === Clue.Correct) && (currentGuessClues[i].clue !== Clue.Correct)) {
+        // Someone had a green in this slot already and ruined it
+        missingGreens.push(prevGuessClues[i].letter.toUpperCase());
+      }
+      if((prevGuessClues[i].clue === Clue.Elsewhere) && (currentGuessClues[i].clue === Clue.Elsewhere) && (prevGuessClues[i].letter === currentGuessClues[i].letter)) {
+        // Someone had a green in this slot already and ruined it
+        unmovedYellows.push(prevGuessClues[i].letter.toUpperCase());
+      }
+    }
+    if(missingGreens.length > 0) {
+      hints.push(`You threw away some green! (${missingGreens.join(',')})`);
+    }
+    if(unmovedYellows.length > 0) {
+      hints.push(`You didn't move some yellow! (${unmovedYellows.join(',')})`);
+    }
+
+    // Check yellows
+    let neededElsewhere : string[] = [];
+    prevGuessClues.forEach((c, i) => {
+      if(c.clue === Clue.Elsewhere) {
+        neededElsewhere.push(c.letter.toUpperCase());
+      }
+    });
+    currentGuessClues.forEach((c, i) => {
+      if((c.clue === Clue.Elsewhere) || ((prevGuessClues[i].clue !== Clue.Correct) && (c.clue === Clue.Correct))) {
+        neededElsewhere = removeIfExists(neededElsewhere, c.letter.toUpperCase());
+      }
+    });
+    if(neededElsewhere.length > 0) {
+      hints.push(`You threw away some yellow! (${neededElsewhere.join(',')})`);
+    }
+  }
+
+  // check grays
+  let usedGrays : string[] = [];
+  currentGuessClues.forEach((c, i) => {
+    const l = c.letter.toUpperCase();
+    if(grays.has(l)) {
+      usedGrays.push(l);
+    }
+  });
+  if(usedGrays.length > 0) {
+    hints.push(`You used some gray! (${usedGrays.join(',')})`);
+  }
+
+  return hints.join("\n");
+}
