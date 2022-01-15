@@ -120,11 +120,27 @@ export function hasPreviousClues(guesses: string[], currentGuess: string, target
   }
 
   // check grays
+
+  let allowedCount = new Map<string, number>();
+  const prevClues  = clue(guesses[guesses.length - 1], target);
+  currentGuessClues.forEach((c, i) => {
+    const l = c.letter.toUpperCase();
+    let count = allowedCount.get(l) ?? 0;
+    if(c.clue !== Clue.Absent) {
+      ++count;
+    }
+    allowedCount.set(l, count);
+  });
+
   let usedGrays : string[] = [];
   currentGuessClues.forEach((c, i) => {
     const l = c.letter.toUpperCase();
-    if(grays.has(l)) {
+    const ac = allowedCount.get(l) ?? 0;
+    if(grays.has(l) && (ac == 0)) {
       usedGrays.push(l);
+    }
+    if(ac > 0) {
+      allowedCount.set(l, ac - 1);
     }
   });
   if(usedGrays.length > 0) {
