@@ -71,56 +71,58 @@ export function hasPreviousClues(guesses: string[], currentGuess: string, target
   const currentGuessClues = clue(currentGuess, target);
   let hints : string[] = [];
 
+  // Collect grays
   let grays = new Map<string, boolean>();
   for(let prevGuess of guesses) {
     let prevGuessClues = clue(prevGuess, target);
 
-    // Collect grays
     prevGuessClues.forEach((c, i) => {
       if(c.clue == Clue.Absent) {
         grays.set(c.letter.toUpperCase(), true);
       }
     });
+  };
 
-    // Check greens and unmoved yellows
-    let missingGreens : string[] = [];
-    let unmovedYellows : string[] = [];
-    for(let i = 0; i < currentGuessClues.length; ++i) {
-      if((prevGuessClues[i].clue === Clue.Correct) && (currentGuessClues[i].clue !== Clue.Correct)) {
-        // Someone had a green in this slot already and ruined it
-        missingGreens.push(prevGuessClues[i].letter.toUpperCase());
-      }
-      if((prevGuessClues[i].clue === Clue.Elsewhere) && (currentGuessClues[i].clue === Clue.Elsewhere) && (prevGuessClues[i].letter === currentGuessClues[i].letter)) {
-        // Someone had a green in this slot already and ruined it
-        unmovedYellows.push(prevGuessClues[i].letter.toUpperCase());
-      }
-    }
-    if(missingGreens.length > 0) {
-      hints.push(`You threw away some green! (${missingGreens.join(',')})`);
-    }
-    if(unmovedYellows.length > 0) {
-      hints.push(`You didn't move some yellow! (${unmovedYellows.join(',')})`);
-    }
+  let prevGuess = guesses[guesses.length - 1];
+  let prevGuessClues = clue(prevGuess, target);
 
-    // Check yellows
-    let neededElsewhere : string[] = [];
-    prevGuessClues.forEach((c, i) => {
-      if(c.clue === Clue.Elsewhere) {
-        neededElsewhere.push(c.letter.toUpperCase());
-      }
-    });
-    currentGuessClues.forEach((c, i) => {
-      if((c.clue === Clue.Elsewhere) || ((prevGuessClues[i].clue !== Clue.Correct) && (c.clue === Clue.Correct))) {
-        neededElsewhere = removeIfExists(neededElsewhere, c.letter.toUpperCase());
-      }
-    });
-    if(neededElsewhere.length > 0) {
-      hints.push(`You threw away some yellow! (${neededElsewhere.join(',')})`);
+  // Check greens and unmoved yellows
+  let missingGreens : string[] = [];
+  let unmovedYellows : string[] = [];
+  for(let i = 0; i < currentGuessClues.length; ++i) {
+    if((prevGuessClues[i].clue === Clue.Correct) && (currentGuessClues[i].clue !== Clue.Correct)) {
+      // Someone had a green in this slot already and ruined it
+      missingGreens.push(prevGuessClues[i].letter.toUpperCase());
     }
+    if((prevGuessClues[i].clue === Clue.Elsewhere) && (currentGuessClues[i].clue === Clue.Elsewhere) && (prevGuessClues[i].letter === currentGuessClues[i].letter)) {
+      // Someone had a green in this slot already and ruined it
+      unmovedYellows.push(prevGuessClues[i].letter.toUpperCase());
+    }
+  }
+  if(missingGreens.length > 0) {
+    hints.push(`You threw away some green! (${missingGreens.join(',')})`);
+  }
+  if(unmovedYellows.length > 0) {
+    hints.push(`You didn't move some yellow! (${unmovedYellows.join(',')})`);
+  }
+
+  // Check yellows
+  let neededElsewhere : string[] = [];
+  prevGuessClues.forEach((c, i) => {
+    if(c.clue === Clue.Elsewhere) {
+      neededElsewhere.push(c.letter.toUpperCase());
+    }
+  });
+  currentGuessClues.forEach((c, i) => {
+    if((c.clue === Clue.Elsewhere) || ((prevGuessClues[i].clue !== Clue.Correct) && (c.clue === Clue.Correct))) {
+      neededElsewhere = removeIfExists(neededElsewhere, c.letter.toUpperCase());
+    }
+  });
+  if(neededElsewhere.length > 0) {
+    hints.push(`You threw away some yellow! (${neededElsewhere.join(',')})`);
   }
 
   // check grays
-
   let allowedCount = new Map<string, number>();
   const prevClues  = clue(guesses[guesses.length - 1], target);
   currentGuessClues.forEach((c, i) => {
@@ -131,7 +133,6 @@ export function hasPreviousClues(guesses: string[], currentGuess: string, target
     }
     allowedCount.set(l, count);
   });
-
   let usedGrays : string[] = [];
   currentGuessClues.forEach((c, i) => {
     const l = c.letter.toUpperCase();
