@@ -4,7 +4,7 @@ import dictionary from "./dictionary.json";
 import { Clue, clue, describeClue, hasPreviousClues } from "./clue";
 import { Keyboard } from "./Keyboard";
 import targetList from "./targets.json";
-import { dictionarySet, pick, resetRng, seed, speak } from "./util";
+import { dictionarySet, pick, resetRng, seed, speak, sharedState, encodeShare } from "./util";
 
 enum GameState {
   Playing,
@@ -19,27 +19,77 @@ interface GameProps {
 
 const targets = targetList.slice(0, targetList.indexOf("murky") + 1); // Words no rarer than this one
 
+// woo, this is some real slop
+let shareStateOnce = sharedState();
+let shareTarget = "";
+let shareFirstGuess = "";
+function setShare(target: string, firstGuess: string, where: string)
+{
+    shareTarget = target;
+    shareFirstGuess = firstGuess;
+
+    // console.log(`setShare(${shareTarget}, ${shareFirstGuess}) [${where}]`);
+}
+
 function randomTarget(wordLength: number) {
   const eligible = targets.filter((word) => word.length === wordLength);
   return pick(eligible);
 }
 
+function shareGame(target: string, firstGuess: string)
+{
+  if(navigator.share) {
+      let p = new URLSearchParams(window.location.search);
+      const s = encodeShare(target, firstGuess);
+      p.set('share', s);
+      // console.log(p.toString());
+      navigator.share({
+        title: `Skittl Game ${s}`,
+        url: '?' + p.toString()
+      });
+  }
+  return undefined;
+}
+
 function Game(props: GameProps) {
+  // console.log(shareStateOnce);
+
   const [gameState, setGameState] = useState(GameState.Playing);
   const [currentGuess, setCurrentGuess] = useState<string>("");
   const [wordLength, setWordLength] = useState(5);
   const [hint, setHint] = useState<string>(`Make your first guess!`);
   const [srStatus, setSrStatus] = useState<string>(``);
   const [target, setTarget] = useState(() => {
+    if(shareStateOnce.length > 0) {
+      // console.log(`target: ${shareStateOnce[0]}`);
+      return shareStateOnce[0];
+    }
     resetRng();
-    return randomTarget(wordLength);
+    const t = randomTarget(wordLength)
+    // console.log(`target: ${t}`);
+    return t;
   });
-  let firstGuess = randomTarget(wordLength);
-  while(firstGuess === target) {
-    firstGuess = randomTarget(wordLength);
-  }
-  const [guesses, setGuesses] = useState<string[]>([firstGuess]);
-  const [gameNumber, setGameNumber] = useState(1);
+
+  const [guesses, setGuesses] = useState<string[]>(() => {
+    let firstGuess = "";
+    if(shareStateOnce.length > 0) {
+      firstGuess = shareStateOnce[1];
+    } else {
+      firstGuess = randomTarget(wordLength);
+      while(firstGuess === target) {
+        firstGuess = randomTarget(wordLength);
+      }
+    }
+    // console.log(`firstGuess: ${firstGuess}`);
+    return [firstGuess];
+  });
+  const [gameNumber, setGameNumber] = useState(() => {
+    if(shareStateOnce.length > 0) {
+      return 0;
+    }
+    return 1;
+  });
+  setShare(target, guesses[0], "initial");
 
   const startNextGame = () => {
     let target = randomTarget(wordLength);
@@ -47,6 +97,7 @@ function Game(props: GameProps) {
     while(firstGuess === target) {
       firstGuess = randomTarget(wordLength);
     }
+    setShare(target, firstGuess, "startNextGame");
     setTarget(target);
     setGuesses([firstGuess]);
     setCurrentGuess("");
@@ -56,6 +107,9 @@ function Game(props: GameProps) {
   };
 
   const onKey = (key: string) => {
+    // console.log("clearing shareStateOnce");
+    shareStateOnce = [];
+
     if (gameState !== GameState.Playing) {
       if (key === "Enter") {
         startNextGame();
@@ -165,6 +219,14 @@ function Game(props: GameProps) {
         >
           Give up
         </button>
+        <button
+          style={{ flex: "0 0 auto" }}
+          onClick={() => {
+            shareGame(shareTarget, shareFirstGuess);
+          }}
+        >
+          Share
+        </button>
       </div>
       <table className="Game-rows" tabIndex={0} aria-label="Table of guesses">
         <tbody>{tableRows}</tbody>
@@ -176,7 +238,7 @@ function Game(props: GameProps) {
       <Keyboard letterInfo={letterInfo} onKey={onKey} />
       {seed ? (
         <div className="Game-seed-info">
-          seed {seed}, length {wordLength}, game {gameNumber}
+          seed {seed}, length {wordLength}, game {gameNumber > 0 ? gameNumber : "[shared]"}
         </div>
       ) : undefined}
     </div>
